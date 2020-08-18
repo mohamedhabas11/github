@@ -1,21 +1,13 @@
-# ---------------------------
-
-#office-router-85.195.197.168        
-
-#mohamed.01
-
-
-#mohamed.02
-[k8s_office_group]
-etcd-office-01.kube-office.move.systems
-etcd-office-02.kube-office.move.systems
-etcd-office-03.kube-office.move.systems
-haproxy-office-01.kube-office.move.systems
-haproxy-office-02.kube-office.move.systems
-master-office-01.kube-office.move.systems
-master-office-02.kube-office.move.systems
-worker-office-01.kube-office.move.systems
-worker-office-02.kube-office.move.systems
+[K8s-infra]
+etcd-01.kube.systems
+etcd-02.kube.systems
+etcd-03.kube.systems
+haproxy-01.kube.systems
+haproxy-02.kube.systems
+mastera-01.kube.systems
+master-02.kube.systems
+worker-01.kube.systems
+worker-02.kube.systems
 
 
 
