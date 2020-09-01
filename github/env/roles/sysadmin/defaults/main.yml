@@ -1,0 +1,21 @@
+
+sysadmin_groups: ['sudo',]
+
+sysadmins:
+  TeamLeader:
+    realname: "Main MAN"
+    password: "SuPer_$TRONG_PASSWD"
+    pubkey: "ssh-rsa $PUBLIC_KEY " 
+  sysadmin1:
+    realname: "sysadmin1"
+    password: "SuPer_$TRONG_PASSWD"
+    pubkey: "ssh-rsa $PUBLIC_KEY " 
+  sysadmin2:
+    realname: "sysadmin2"   
+    password: "SuPer_$TRONG_PASSWD"
+    pubkey: "ssh-rsa $PUBLIC_KEY " 
+  removed_admin:
+    remove: True
+    
+    
+    

@@ -1,0 +1,11 @@
+#
+# {{ ansible_managed }}
+#
+
+{% for package in kvm_ppas %}
+Package: *
+Pin: release o=LP-PPA-{{ package | replace('ppa:gassi/', 'gassi-') }}
+Pin-Priority: 700
+
+
+{% endfor %}

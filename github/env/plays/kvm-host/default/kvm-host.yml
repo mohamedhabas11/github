@@ -1,0 +1,294 @@
+---
+
+dependency:
+  name: galaxy
+
+driver:
+  name: vagrant
+  provider:
+    name: libvirt
+
+lint:
+  name: yamllint
+  options:
+    config-file: kvmhost/yamllint.yml
+
+
+platforms:
+
+  # HAPROXY
+  - name: haproxy-office-01.kube-office.move.systems
+    box: generic/ubuntu1804
+    groups:
+      - k8s_group
+      - k8s_office_group
+      - k8s_office_haproxy_group
+    interfaces:
+      - network_name: public_network
+        dev: "br88"
+        mode: "bridge"
+        type: "bridge"
+        # mac: "52:54:00:65:a9:f3"
+    config_options:
+      synced_folder: true
+    provider_raw_config_args:
+      - 'host = "192.168.88.60"'
+      - 'connect_via_ssh = true'
+      - 'username = "$USER"'
+      - 'driver = "kvm"'
+      - 'storage_pool_name = "local-pool"'
+      - 'cpu_mode = "host-passthrough"'
+      - 'machine_virtual_size = 80'
+    memory: 1024
+    cpus: 1
+    force_stop: false
+
+  - name: haproxy-office-02.kube-office.move.systems
+    box: generic/ubuntu1804
+    groups:
+      - k8s_group
+      - k8s_office_group
+      - k8s_office_haproxy_group
+    interfaces:
+      - network_name: public_network
+        dev: "br88"
+        mode: "bridge"
+        type: "bridge"
+        # mac: "52:54:00:65:a9:f4"
+    config_options:
+      synced_folder: true
+    provider_raw_config_args:
+      - 'host = "192.168.88.60"'
+      - 'connect_via_ssh = true'
+      - 'username = "$USER"'
+      - 'driver = "kvm"'
+      - 'storage_pool_name = "local-pool"'
+      - 'cpu_mode = "host-passthrough"'
+      - 'machine_virtual_size = 80'
+    memory: 1024
+    cpus: 1
+    force_stop: false
+
+  # ETCD
+  - name: etcd-office-01.kube-office.move.systems
+    box: generic/ubuntu1804
+    groups:
+      - k8s_group
+      - k8s_office_group
+      - k8s_office_etcd_group
+    interfaces:
+      - network_name: public_network
+        dev: "br88"
+        mode: "bridge"
+        type: "bridge"
+    config_options:
+      synced_folder: true
+    provider_raw_config_args:
+      - 'host = "192.168.88.60"'
+      - 'connect_via_ssh = true'
+      - 'username = "$USER"'
+      - 'driver = "kvm"'
+      - 'storage_pool_name = "local-pool"'
+      - 'cpu_mode = "host-passthrough"'
+      - 'machine_virtual_size = 80'
+    memory: 1024
+    cpus: 1
+    force_stop: false
+
+  - name: etcd-office-02.kube-office.move.systems
+    box: generic/ubuntu1804
+    groups:
+      - k8s_group
+      - k8s_office_group
+      - k8s_office_etcd_group
+    interfaces:
+      - network_name: public_network
+        dev: "br88"
+        mode: "bridge"
+        type: "bridge"
+    config_options:
+      synced_folder: true
+    provider_raw_config_args:
+      - 'host = "192.168.88.60"'
+      - 'connect_via_ssh = true'
+      - 'username = "$USER"'
+      - 'driver = "kvm"'
+      - 'storage_pool_name = "local-pool"'
+      - 'cpu_mode = "host-passthrough"'
+      - 'machine_virtual_size = 80'
+    memory: 1024
+    cpus: 1
+    force_stop: false
+
+  - name: etcd-office-03.kube-office.move.systems
+    box: generic/ubuntu1804
+    groups:
+      - k8s_group
+      - k8s_office_group
+      - k8s_office_etcd_group
+    interfaces:
+      - network_name: public_network
+        dev: "br88"
+        mode: "bridge"
+        type: "bridge"
+    config_options:
+      synced_folder: true
+    provider_raw_config_args:
+      - 'host = "192.168.88.60"'
+      - 'connect_via_ssh = true'
+      - 'username = "$USER"'
+      - 'driver = "kvm"'
+      - 'storage_pool_name = "local-pool"'
+      - 'cpu_mode = "host-passthrough"'
+      - 'machine_virtual_size = 80'
+    memory: 1024
+    cpus: 1
+    force_stop: false
+
+  # MASTERS
+  - name: master-office-01.kube-office.move.systems
+    box: generic/ubuntu1804
+    groups:
+      - k8s_group
+      - k8s_office_group
+      - k8s_office_master_group
+    interfaces:
+      - network_name: public_network
+        dev: "br88"
+        mode: "bridge"
+        type: "bridge"
+    config_options:
+      synced_folder: true
+    provider_raw_config_args:
+      - 'host = "192.168.88.60"'
+      - 'connect_via_ssh = true'
+      - 'username = "$USER"'
+      - 'driver = "kvm"'
+      - 'storage_pool_name = "local-pool"'
+      - 'cpu_mode = "host-passthrough"'
+      - 'machine_virtual_size = 80'
+    memory: 3072
+    cpus: 4
+    force_stop: false
+
+  - name: master-office-02.kube-office.move.systems
+    box: generic/ubuntu1804
+    groups:
+      - k8s_group
+      - k8s_office_group
+      - k8s_office_master_group
+    interfaces:
+      - network_name: public_network
+        dev: "br88"
+        mode: "bridge"
+        type: "bridge"
+    config_options:
+      synced_folder: true
+    provider_raw_config_args:
+      - 'host = "192.168.88.60"'
+      - 'connect_via_ssh = true'
+      - 'username = "$USER"'
+      - 'driver = "kvm"'
+      - 'storage_pool_name = "local-pool"'
+      - 'cpu_mode = "host-passthrough"'
+      - 'machine_virtual_size = 80'
+    memory: 3072
+    cpus: 4
+    force_stop: false
+
+  # WORKERS
+  - name: worker-office-01.kube-office.move.systems
+    box: generic/ubuntu1804
+    groups:
+      - k8s_group
+      - k8s_office_group
+      - k8s_office_worker_group
+    interfaces:
+      - network_name: public_network
+        dev: "br88"
+        mode: "bridge"
+        type: "bridge"
+    config_options:
+      synced_folder: true
+    provider_raw_config_args:
+      - 'host = "192.168.88.60"'
+      - 'connect_via_ssh = true'
+      - 'username = "$USER"'
+      - 'driver = "kvm"'
+      - 'storage_pool_name = "local-pool"'
+      - 'cpu_mode = "host-passthrough"'
+      - 'machine_virtual_size = 80'
+    memory: 18432
+    cpus: 20
+    force_stop: false
+
+  - name: worker-office-02.kube-office.move.systems
+    box: generic/ubuntu1804
+    groups:
+      - k8s_group
+      - k8s_office_group
+      - k8s_office_worker_group
+    interfaces:
+      - network_name: public_network
+        dev: "br88"
+        mode: "bridge"
+        type: "bridge"
+    config_options:
+      synced_folder: true
+    provider_raw_config_args:
+      - 'host = "192.168.88.60"'
+      - 'connect_via_ssh = true'
+      - 'username = "$USER"'
+      - 'driver = "kvm"'
+      - 'storage_pool_name = "local-pool"'
+      - 'cpu_mode = "host-passthrough"'
+      - 'machine_virtual_size = 80'
+    memory: 18432
+    cpus: 20
+    force_stop: false
+
+provisioner:
+  name: ansible
+  log: true
+  inventory:
+    links:
+      group_vars: ../../../../env/live/inventory/group_vars
+      host_vars: ../../../../env/live/inventory/host_vars
+  env:
+    ANSIBLE_ROLES_PATH: ../../../../roles/local/
+    ANSIBLE_LIBRARY: ../../../../library/
+    ANSIBLE_FORKS: 25
+    ANSIBLE_FORCE_COLOR: true
+  connection_options:
+    ansible_ssh_common_args: -o ProxyCommand="/usr/bin/ssh -i ~/.ssh/id_rsa -l ${USER} -W %h:%p 192.168.88.60"
+  playbooks:
+    converge: ../../k8s-office.yml
+  lint:
+    name: ansible-lint
+    # enabled: false
+    options:
+      # Exclude:
+      x: ["403"]  # Tasks that run when changed should likely be handlers
+
+scenario:
+  name: default
+  test_sequence:
+    - lint
+    - destroy
+    - dependency
+    - syntax
+    - create
+    - prepare
+    - converge
+    - idempotence
+    - side_effect
+    - verify
+    - cleanup
+    - destroy
+
+verifier:
+  name: testinfra
+  options:
+    verbose: true
+  lint:
+    name: flake8

@@ -1,0 +1,42 @@
+
+
+- name: register existing groups
+  command: "cut -d: -f1 /etc/group"
+  register: _available_groups
+  changed_when: False
+  check_mode: no
+
+
+- name: deploy sysadmin users
+  user:
+    name: "{{ item.key }}"
+    update_password: on_create
+    password: "{{ item.value.password }}"
+    shell: /bin/bash
+    # just use groups that are available
+    groups: "{{ ','.join( sysadmin_groups | intersect(_available_groups.stdout_lines) ) }}"
+    append: yes
+  with_dict: "{{ /sysadmins }}"
+  when: not item.value.remove | default(False)
+
+
+- name: remove user
+  user:
+    name: "{{ item.key }}"
+    state: absent
+    force: yes
+    remove: yes
+  ignore_errors: yes
+  with_dict: "{{ /sysadminsÂ}}}"
+  when: item.value.remove | default(False)
+  tags:
+  - removesysadmin
+  - remove-sysadmin
+      
+- name: manage authorized-keys
+  authorized_key:
+    user: "{{ item.key }}"
+    key: "{{ item.value.pubkey }}"
+  with_dict: "{{ /sysadmins }}"
+  when: not item.value.remove | default(False)
+  

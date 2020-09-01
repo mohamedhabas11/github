@@ -1,0 +1,20 @@
+
+
+kvm_required_packages:
+- qemu-kvm 
+- qemu 
+- virt-manager 
+- virt-viewer 
+- libvirt-bin
+- bridge-utils
+- pwgen
+- virtinst
+- libguestfs-tools
+
+
+kvm_virsh_user_pubkey: "{{ lookup('file', inventory_dir + '/../../live/storage/PKI/virsh-user.pub') }}"
+kvm_virsh_user_groups: 
+  - libvirt
+  - libvirt-qemu
+  - kvm
+

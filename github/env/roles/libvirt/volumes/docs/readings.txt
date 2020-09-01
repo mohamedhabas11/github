@@ -1,0 +1,11 @@
+##################
+# base knowledge #
+##################
+http://events.linuxfoundation.org/sites/events/files/slides/A-Practical-Look-at-QEMU-Block-Layer-Primitives.pdf
+http://wiki.libvirt.org/page/Live-disk-backup-with-active-blockcommit
+https://kashyapc.com/tag/libvirt/
+
+# good article about disks and migration
+https://kashyapc.com/2014/07/06/live-disk-migration-with-libvirt-blockcopy/
+
+

@@ -1,0 +1,72 @@
+- name: Prepare (localhost)
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  become: false
+  tasks:
+    - name: Create $_EPHEMERAL_DIRECTORY/storage/ directory hierarchy
+      file:
+        path: "{{ lookup('env','_EPHEMERAL_DIRECTORY') }}/{{ item }}/"
+        state: directory
+        recurse: true
+      with_items:
+        - "storage/"
+        - "public-storage/"
+        - "storage/PKI/internal-ca/"
+        - "storage/k8s_cluster_group/"
+        - "storage/k8s/env/ca/"
+	- "storage/ldap/" # this depends if we have one  
+
+    - name: Copy PKI/internal-ca/ca.crt files to $EPHEMERAL_DIRECTORY/storage/
+      copy:
+        src: "{{ lookup('env','PROJECT_DIRECTORY') }}../env/{{ item }}"
+        dest: "{{ lookup('env','_EPHEMERAL_DIRECTORY') }}/{{ item }}"
+      with_items:
+        - "storage/PKI/internal-ca/ca.crt"
+        - "storage/PKI/internal-ca/ca.key"
+        - "storage/k8s/office/ca/ca.crt"
+        - "storage/k8s/office/ca/ca.key"
+        - "storage/ldap/binduser_password"
+
+    - name: Create a symbolic link from  ephemeral directory to public-storage/k8s-users
+      file:
+        src: "{{ lookup('env','PROJECT_DIRECTORY') }}/../../env/k8s-users"
+        dest: "{{ lookup('env','EPHEMERAL_DIRECTORY') }}/public-storage/k8s-users"
+        state: link
+        # force: true
+
+
+- name: Prepare
+  hosts: all
+  become: true
+  gather_facts: false
+
+  vars:
+    vagrant_users:
+      - vagrant
+
+  tasks:
+    - name: Install python for Ansible
+      raw: test -e /usr/bin/python || (apt -y update && apt install -y python-minimal)
+      become: true
+      changed_when: false
+
+    - name: create users
+      user:
+        name: "{{ item }}"
+        state: present
+        shell: /bin/bash
+      with_items: "{{ vagrant_users }}"
+
+    - name: manage public keys
+      authorized_key:
+        user: "{{ item }}"
+        key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
+      with_items: "{{ vagrant_users }}"
+
+    - name: add to sudoers file
+      lineinfile:
+        dest: /etc/sudoers
+        line: "{{ item }} ALL=(ALL:ALL) NOPASSWD:ALL"
+      with_items: "{{ vagrant_users }}"
+

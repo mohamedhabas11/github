@@ -1,0 +1,62 @@
+
+
+
+- name: update apt-cache
+  apt:
+    update_cache: yes
+  changed_when: false
+
+
+- name: install packages required by kvm
+  apt:
+    pkg: "{{ kvm_required_packages }}"
+    state: present
+
+
+- block:
+
+  - name: create virsh-user
+    user:
+      name: virsh-user
+      groups: "{{ kvm_virsh_user_groups }}"
+      state: present
+      createhome: yes
+
+
+  - name: configure only
+    file:
+      path: /usr/local/bin/only
+      state: absent
+
+
+  - name: manage authorized-keys
+    authorized_key:
+      user: virsh-user
+      key: "{{ kvm_virsh_user_pubkey }}"
+      key_options: 'no-port-forwarding,no-X11-forwarding,no-agent-forwarding,no-pty'
+
+
+  - name: configure commands for virsh-user in sudoers file
+    lineinfile:
+      line: "Cmnd_Alias VIRSH_USER_CMD = /usr/bin/virt-sysprep, /usr/bin/virt-customize, /usr/bin/virt-resize, /usr/bin/virt-copy-in, /usr/bin/virt-install, /usr/bin/virsh, /usr/bin/qemu-img"
+      dest: /etc/sudoers
+      regexp: "^Cmnd_Alias VIRSH_USER_CMD .*"
+      mode: 0440
+      owner: root
+      group: root
+      validate: '/usr/sbin/visudo -cf %s'
+
+
+  - name: configure virsh-user in sudoers file
+    lineinfile:
+      line: "virsh-user ALL=(ALL:ALL) NOPASSWD:VIRSH_USER_CMD"
+      dest: /etc/sudoers
+      regexp: "^virsh-user .* NOPASSWD:VIRSH_USER_CMD"
+      mode: 0440
+      owner: root
+      group: root
+      validate: '/usr/sbin/visudo -cf %s'
+
+
+  tags:
+    - virsh-user

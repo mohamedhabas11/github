@@ -1,0 +1,73 @@
+# tasks file for amana.lvm
+
+- name: ensure packages are installed
+  apt:
+    name: "{{ item }}"
+    state: present
+  with_items:
+  - thin-provisioning-tools
+  - lvm2
+
+
+- name: create VGs
+  lvg:
+    vg: "{{ item.name }}"
+    pvs: "{{ ','.join(item.devices) }}"
+  with_items: "{{ lvm2_volume_groups }}"
+
+
+- name: create thin pools
+  lvol:
+    vg: "{{ item.volumegroup }}"
+    thinpool: "{{ item.name }}"
+    size: "{{ item.size }}"
+    opts: "{{ item.opts|default('') }}"
+  with_items: "{{ lvm2_thin_pools }}"
+
+
+- name: create thin LVs
+  lvol:
+    vg: "{{ item.volumegroup }}"
+    thinpool: "{{ item.poolname }}"
+    lv: "{{ item.name }}"
+    size: "{{ item.size }}"
+    opts: "{{ item.opts|default('') }}"
+  with_items:
+  - "{{ lvm2_volumes }}"
+  - "{{ lvm2_volumes_extra }}"
+  when: item.poolname is defined
+
+
+- name: create fixed size LVs
+  lvol:
+    vg: "{{ item.volumegroup }}"
+    lv: "{{ item.name }}"
+    size: "{{ item.size }}"
+    opts: "{{ item.opts|default('') }}"
+  with_items:
+  - "{{ lvm2_volumes }}"
+  - "{{ lvm2_volumes_extra }}"
+  when: item.poolname is not defined
+
+
+- name: mkfs on LVs
+  filesystem:
+    fstype: "{{ item.fstype }}"
+    dev: "/dev/{{ item.volumegroup }}/{{ item.name }}"
+  with_items:
+  - "{{ lvm2_volumes }}"
+  - "{{ lvm2_volumes_extra }}"
+  when: item.fstype is defined
+
+
+- name: mount LVs
+  mount:
+    name: "{{ item.mountpoint }}"
+    src: "/dev/{{ item.volumegroup }}/{{ item.name }}"
+    fstype: "{{ item.fstype }}"
+    opts: "{{ item.mountopts|default('defaults') }}"
+    state: mounted
+  with_items:
+  - "{{ lvm2_volumes }}"
+  - "{{ lvm2_volumes_extra }}"
+  when: item.mountpoint is defined and item.fstype is defined

@@ -1,0 +1,10 @@
+
+
+libvirt_default_directory_pools:
+- name: default
+  path: /var/lib/libvirt/images
+- name: boot-scratch
+  path: /var/lib/libvirt/boot
+  
+  
+  

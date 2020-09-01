@@ -1,0 +1,178 @@
+#
+#
+# virt-install
+#  --disk vol=local-pool/mysql.test.05.amana.vpn-vda.qcow2
+#  --disk vol=local-pool/mysql.test.05.amana.vpn-vdb.qcow2
+#  --name mysql.test.05.amana.vpn
+##  --location http://ch.archive.ubuntu.com/ubuntu/dists/trusty-updates/main/installer-amd64/
+##  --ram 12394
+##  --os-variant virtio26
+##  --os-type=linux
+##  --virt-type kvm
+##  --video vga
+#  --vcpus 2
+##  --autostart
+##  --network bridge=br2,model=e1000
+##  --initrd-inject preseed.cfg
+##  --extra-args="locale=de_CH.UTF-8 console-setup/ask_detect=false keyboard-configuration/layoutcode=ch file=file:/preseed.cfg vga=788 quiet"
+
+
+
+#Storage options
+#
+#--disk=DISKOPTS
+#    Specifies media to use as storage for the guest, with various options. The general format of a disk string is: --disk
+#    opt1=val1,opt2=val2,.... To specify media, the command format can either be: --disk /some/storage/path,opt1=val1 or explicitly specify one of the following arguments:
+#
+#    path
+#        A path to some storage media to use, existing or not. Existing media can be a file or block device. If installing on a remote host, the existing media must be shared as a libvirt storage volume. Specifying a non-existent path implies creating the storage, and requires that you specify a size value. If the base directory of the path is a libvirt storage pool on the host, the new storage is created as a libvirt storage volume. For remote hosts, the base directory is required to be a storage pool if using this method.
+#    pool
+#        An existing libvirt storage pool name on which to create new storage. This option requires that you specify a size value.
+#    vol
+#        An existing libvirt storage volume to use. This value is specified as poolname/volname.
+#
+#    Other available options:
+#
+#    device
+#        Disk device type. Value can be cdrom, disk, or floppy. Default is disk. If a cdrom is specified, and no installation method is chosen, the CD-ROM device is used as the installation media.
+#    bus
+#        Disk bus type. Value can be ide, scsi, usb, virtio, or xen. The default is hypervisor-dependent because not all hypervisors support all bus types.
+#    perms
+#        Disk permissions. Value can be rw (read/write), ro (Read-only), or sh (Shared read/write). Default is rw.
+#    size
+#        Size (in GB) to use if creating new storage
+#    sparse
+#        Whether to skip fully allocating newly created storage. Value is true or false. Default is true (do not fully allocate). The initial time taken to fully allocate the guest virtual disk (spare=false) is usually by balanced by faster installation times inside the guest. For that reason, use this option in order to ensure consistently high performance and to avoid I/O errors in the guest should the host file system run out of space.
+#    cache
+#        The cache mode to be used. The host pagecache provides cache memory. The cache value can be none, writethrough, or writeback. The writethrough option provides read caching. The writeback option provides read and write caching.
+#    format
+#        Image format to be used if creating managed storage. For file volumes, this value can be one of the following values:
+#
+#            raw: a plain file
+#            bochs: Bochs disk image format
+#            cloop: compressed loopback disk image format
+#            cow: User Mode Linux disk image format
+#            dmg: Mac disk image format
+#            iso: CDROM disk image format
+#            qcow: QEMU v1 disk image format
+#            qcow2: QEMU v2 disk image format
+#            vmdk: VMWare disk image format
+#            vpc: VirtualPC disk image format
+#
+#    This option deprecates --file, --file-size, and, --nonsparse.
+
+
+- name: fail if guest has no dns entry
+  fail:
+    msg="{{ item.name }} has no DNS entry"
+  with_items: "{{ libvirt_guests }}"
+  when: lookup('dig', item.name ) == "NXDOMAIN"
+
+
+- name: ensure packages are installed
+  apt:
+    name:
+      - python-libvirt
+    state: present
+
+
+- name: register domains
+  virt_domains:
+    command: list_domains
+  register: _libvirt_list_domains
+
+
+- name: create preesed.cfg folder for undefined domains
+  file:
+    path: "/tmp/{{ item.name }}/"
+    state: directory
+    owner: root
+    group: root
+    mode: 0700
+  with_items: "{{ libvirt_guests }}"
+  when: not item.name.replace('private-domain','').replace('k8s-cluster','') in _libvirt_list_domains and item.vi_preseed_template is defined
+
+
+- name: create preesed.cfg for undefined domains
+  template:
+    src: "{{ item.vi_preseed_template }}"
+    dest: "/tmp/{{ item.name }}/preseed.cfg"
+    owner: root
+    group: root
+    mode: 0600
+  with_items: "{{ libvirt_guests }}"
+  when: not item.name.replace('private-domain','').replace('k8s-cluster','') in _libvirt_list_domains and item.vi_preseed_template is defined
+
+
+# create directories for guest shares
+- name: create hostdirs
+  file:
+    path: "{{ item.1.source }}"
+    state: directory
+    owner: libvirt-qemu
+    group: kvm
+  with_subelements:
+    - "{{ libvirt_guests }}"
+    - libvirt_hostshares
+    - flags:
+      skip_missing: True
+
+
+# DEFINE --boot hd when using existing disks
+# instead if location
+- name: create undefined domains
+  shell: "virt-install
+      {% for disk in item.libvirt_disks %}
+      --disk vol={{ disk.disk_pool }}/{{ item.name }}-{{ disk.id }}.{{ disk.format }},sparse={{ disk.sparse | default('yes') }}{% if disk.bus is defined %},bus={{ disk.bus }}{% endif %}
+      {% endfor %}
+      {% for cdrom in item.libvirt_cdroms|default({}) %}
+      --disk path={{ cdrom.image }},bus={{ cdrom.bus }},device=cdrom,perms=sh
+      {% endfor %}
+      --name {{ item.name.replace('.amana.vpn','').replace('.move.systems','') }}
+      {% if item.vi_location is defined %}
+       --location {{ item.vi_location }}
+      {% endif %}
+      --ram {{ item.vi_memory }}
+      --os-variant={{ item.vi_os_variant }}
+      --os-type={{ item.vi_os_type }}
+      --virt-type={{ item.vi_virt_type }}
+      --vcpus={{ item.vi_num_cpu }}
+      {% if item.vi_autostart|lower == 'true' %}--autostart
+      {% endif %}
+      {% if item.vi_network is defined %}
+      --network {{ item.vi_network }}
+      {% endif %}
+      {% if item.vi_networks is defined %}
+      {% for network in item.vi_networks  %}
+      --network {{ network }}
+      {% endfor %}
+      {% endif %}
+      {% if item.vi_preseed_template is defined %}
+      --initrd-inject /tmp/{{ item.name }}/preseed.cfg
+      {% endif %}
+      {% if item.vi_extra_args is defined %}
+      --extra-args='{{ item.vi_extra_args }} {{ item.vi_grub_cmd_line|default('') }}'
+      {% endif %}
+      {% if item.vi_boot_from is defined %}
+      --boot '{{ item.vi_boot_from }}'
+      {% endif %}
+      --video vga
+      --graphics vnc
+      {% if item.vi_wait is defined %}
+      --wait {{ item.vi_wait }}
+      {% endif %}
+      {% if item.vi_noautoconsole is defined %}
+      --noautoconsole
+      {% endif %}
+      {% if item.libvirt_hostshares is defined and item.libvirt_hostshares[0] is defined %}
+      {%   for share in item.libvirt_hostshares %}
+      --filesystem type={{ share.type | default('mount') }},mode={{ share.mode | default('mapped') }},source={{ share.source }},target={{ share.label }}
+      {%   endfor %}
+      {% endif %}
+      {% if libvirt_guests_background_creation is defined and libvirt_guests_background_creation%}
+      & sleep 10 
+      {% endif %}
+      "
+  with_items: "{{ libvirt_guests }}"
+  when: not item.name.replace('private-domain','').replace('k8s-cluster','') in _libvirt_list_domains
+

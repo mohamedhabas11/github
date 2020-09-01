@@ -1,0 +1,107 @@
+# create volume command
+# -------------------
+#  NAME
+#    vol-create-as - create a volume from a set of args
+#
+#  SYNOPSIS
+#    vol-create-as <pool> <name> <capacity> [--allocation <string>] [--format <string>] [--backing-vol <string>] [--backing-vol-format <string>] [--prealloc-metadata]
+#
+#  DESCRIPTION
+#    Create a vol.
+#
+#  OPTIONS
+#    [--pool] <string>  pool name
+#    [--name] <string>  name of the volume
+#    [--capacity] <string>  size of the vol, as scaled integer (default bytes)
+#    --allocation <string>  initial allocation size, as scaled integer (default bytes)
+#    --format <string>  file format type raw,bochs,qcow,qcow2,qed,vmdk
+#    --backing-vol <string>  the backing volume if taking a snapshot
+#    --backing-vol-format <string>  format of backing volume if taking a snapshot
+#    --prealloc-metadata  preallocate metadata (for qcow2 instead of full allocation)
+
+# ALL volume commands
+# -------------------
+#    vol-clone                      clone a volume.
+#    vol-create-as                  create a volume from a set of args
+#    vol-create                     create a vol from an XML file
+#    vol-create-from                create a vol, using another volume as input
+#    vol-delete                     delete a vol
+#    vol-download                   download volume contents to a file
+#    vol-dumpxml                    vol information in XML
+#    vol-info                       storage vol information
+#    vol-key                        returns the volume key for a given volume name or path
+#    vol-list                       list vols
+#    vol-name                       returns the volume name for a given volume key or path
+#    vol-path                       returns the volume path for a given volume name or key
+#    vol-pool                       returns the storage pool for a given volume key or path
+#    vol-resize                     resize a vol
+#    vol-upload                     upload file contents to a volume
+#    vol-wipe                       wipe a vol
+
+# libvirt python api : volumes
+# http://libvirt.org/docs/libvirt-appdev-guide-python/en-US/html/libvirt_application_development_guide_using_python-Storage_Pools-Listing.html
+
+
+- name: ensure packages are installed
+  apt:
+    name:
+      - python-libvirt
+    state: present
+
+
+# gather pool facts
+- virt_pool: command=facts
+
+
+- name: debug virt-disks
+  debug: var=item
+  with_subelements:
+    - "{{ libvirt_guests }}"
+    - libvirt_disks
+
+
+- name: debug existing volumes
+  debug: var=ansible_libvirt_pools
+
+
+# virsh vol create can't create images on top of backup files
+- name: create volume if not exists
+  command: "virsh vol-create-as {{ item.1.disk_pool }}
+            {# disk name #}
+            {{ item.0.name }}-{{ item.1.id }}.{{ item.1.format }}
+            {{ item.1.disk_size }}
+            --format {{ item.1.format }}"
+  with_subelements:
+    - "{{ libvirt_guests }}"
+    - libvirt_disks
+  when:
+    - item.1.disk_pool is defined
+    - "(not item.0.name + '-' + item.1.id + '.' + item.1.format in ansible_libvirt_pools[item.1.disk_pool]['volumes']) and (not item.1.disk_backing_file is defined)"
+
+
+# no size is required when image is created on top of an existing one
+# create images with existing backup files with qemu-img
+- name: create volume with backing file if not exists
+  command: "qemu-img create -b {{ item.1.disk_backing_file }}
+            -f {{ item.1.format }}
+            {# path from gathered facts + disk name #}
+            {{ ansible_libvirt_pools[item.1.disk_pool]['path'] }}/{{ item.0.name }}-{{ item.1.id }}.{{ item.1.format }}"
+  with_subelements:
+    - "{{ libvirt_guests }}"
+    - libvirt_disks
+  register: _qemu_img_created
+  when:
+    - item.1.disk_pool is defined
+    - "(not item.0.name + '-' + item.1.id + '.' + item.1.format in ansible_libvirt_pools[item.1.disk_pool]['volumes']) and item.1.disk_backing_file is defined"
+
+# to check if backup-chain is correct use:
+# qemu-img info --backing-chain <image name>
+
+# reload pool manually when images where created with qemu-img
+- name: refresh pool
+  command: "virsh pool-refresh {{ item.key }}"
+  with_dict: "{{ ansible_libvirt_pools }}"
+  when:
+    - (_qemu_img_created is defined) and _qemu_img_created.changed
+
+

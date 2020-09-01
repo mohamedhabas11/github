@@ -48,6 +48,7 @@ this leads us to the setup of the guests.
 			 - an INTERFACE template to able to download the initial OS-version 
 			 - openserver-ssh will be running after the boot-up process 
 			 - reach-able by ansible-master node 
+
 		b- after the initial install the master template will be stopped and on the KVM-HOST :
 			 - on the host we will kill the machine and use its image 
 			 - inject different ssh-key pairs for ansible to use 
@@ -55,6 +56,7 @@ this leads us to the setup of the guests.
 			 - alocate resourses and the machines will be created in parrallel 
 			 - The machines will appear with the same ( Hostname ) as withen the Master-ansible nodes /Inventory/hosts file
 			 - Networking according to the porpuse designed in the existing DNS_NAMESERVER 
+		
 		c- Withen ansible we can apply different play-books to Update , Install nessecary Software on virtual defined HDD and a Virtual Bridge for Network Access.
 			- a dhcp interface card that will be part of a Group name to apply some Network rules withen anible-groups 
 			- requirment.txt file has a list of necessary sofware you need ansible to install and configure to the porpuse of this repo .
@@ -71,22 +73,38 @@ has an auto install script that takes care of setting up the whole processes for
 	- guest-machines are totally erase-able at command 
 	- New-host new-repo re-setup test-inviorment friendly . 
 												Devops <== Bad advertisement
-This repo will bounce of two Maintaned repos
+This repo will bounce of to two Maintaned repos
 	mohamedhabas.11@github.com/ansible:
 	mohamedhabas.11@github.com/kuberntes 							#Missing
 	^
-	still figuring out kube-adm scripts out 
+	still figuring out kube-adm playbooks out 
+
+KVMHOST/
+	 - there is setup play-book to maintain the KVMHOST 
+	 - Within the env/ directory you seperate this enviorment 
+	 - Default values are set for the playbooks
+	 - Default values for the enviorment is withen /github/github/env/roles/kvm
+	 - Install kvm packages and add sysadmins to required groups 
+		a- list of Team members is added from /env/roles/sysadmin/defaults directory 
+		b- list of default kvm  is added from /env/roles/kvm
+		c- base image for host is under /roles/libvirt/domains/templates/Preseed.cfg.j2 
 
 #####################################################################################################################################
         mohamedhabas.11@github.com/ansible:
-
 Ansible :
 	the repository is mainly a to serve as a skeleton for infrastructure as code {IAS} project .
 	depencies :
 	A- ssh-Keys for the repo to use to access the machines
 	B- KVM-Host Must have enough resources to handle the guests machine 
 	C- ansible relays on the DNS-server to be updated with the entries of the guest machines 
-	D- there is no requirment.txt for the Ansible setup . 	<	 #feel free to Help on auto install ansible on a clean machine .
+	D- there is a vagrant driver for the initail Ansible setup on the kvm hosts 
+	E- one the host ansible will manage :
+		LVM-provisioning
+		Networking 
+		libvirt
+		user-creation 
+		executes generation of guist machines 
+  		prepares machines for further playbooks and join them with existing infrastructure as a group in the /inventory/hosts file  
 ######################################################################################################################################
 Note: I will guide this repo to be a kubernetes testing enviorment and aware of existing setups
 ######################################################################################################################################

@@ -1,0 +1,80 @@
+
+
+
+- name: ensure packages are installed
+  apt:
+    name:
+      - python3-libvirt
+      - python3-lxml
+      - python-libvirt
+      - python-lxml
+    state: present
+
+  
+
+# this shows all pools
+# (active, inactive, stopped)
+- name: list pools
+  virt_pool: 
+    command: list_pools
+  register: _libvirt_list_pools
+
+
+- name: define directory pools
+  command: "virsh pool-define-as {{ item.name }} --target {{ item.path }} --type dir"
+  when: item.name not in _libvirt_list_pools.list_pools
+  with_items: 
+    - "{{ libvirt_default_directory_pools }}"
+    - "{{ libvirt_directory_pools }}"
+  
+ 
+- name: define gluster pools
+  command: "virsh pool-define-as {{ item.name }} --type netfs --source-host {{ item.gluster_host }} --source-path {{ item.gluster_volume }} --target {{ item.path }} --source-format glusterfs"
+  when: item.name not in _libvirt_list_pools.list_pools
+  with_items: 
+    - "{{ libvirt_gluster_pools }}" 
+ 
+  
+- name: build pools
+  virt_pool:
+    command: build
+    name: "{{ item.name }}"
+  when: item.name not in _libvirt_list_pools.list_pools
+  with_items: 
+    - "{{ libvirt_default_directory_pools }}"
+    - "{{ libvirt_directory_pools }}"
+    - "{{ libvirt_gluster_pools }}" 
+
+
+- name: activate pools
+  virt_pool: 
+    state: active
+    name: "{{ item.name }}"
+  with_items: 
+    - "{{ libvirt_default_directory_pools }}"
+    - "{{ libvirt_directory_pools }}"
+    - "{{ libvirt_gluster_pools }}" 
+
+
+- name: autostart pools
+  virt_pool: 
+    autostart: 'yes'
+    name: "{{ item.name }}"
+  with_items: 
+    - "{{ libvirt_default_directory_pools }}"
+    - "{{ libvirt_directory_pools }}"
+    - "{{ libvirt_gluster_pools }}" 
+
+
+- name: directory pools chown
+  file: 
+    path: "{{ item.path }}"
+    state: 'directory'
+    owner: 'libvirt-qemu'
+    group: 'kvm'
+    mode: 0775
+  with_items: 
+    - "{{ libvirt_default_directory_pools }}"
+    - "{{ libvirt_directory_pools }}"
+  tags:
+    - pool_owner
