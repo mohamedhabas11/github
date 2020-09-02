@@ -1,0 +1,91 @@
+# This file describes the network interfaces available on your system
+# and how to activate them. For more information, see interfaces(5).
+#
+# {{ ansible_managed }}
+#
+
+source /etc/network/interfaces.d/*
+
+# The loopback network interface
+auto lo
+iface lo inet loopback
+
+# Bonding interface vlan 1075
+auto bond0
+iface bond0 inet static
+    address {{ lookup('dig', inventory_hostname )}}
+    gateway 10.190.75.1
+    netmask 255.255.255.0
+    down ip link set $IFACE down
+    pre-up modprobe bonding mode=1
+    # create bonding device
+    pre-up test -d /sys/class/net/$IFACE || echo +$IFACE > /sys/class/net/bonding_masters
+    up ip link set $IFACE up mtu 1500
+    up udevadm trigger
+    # bring down slave interfaces
+    # just a paranoia check, this should not happen
+    up if test `cat /sys/class/net/{{ interface_name }}1/operstate` = up ; then ifdown {{ interface_name }}1 ; fi
+    up if test `cat /sys/class/net/{{ interface_name }}2/operstate` = up ; then ifdown {{ interface_name }}2 ; fi
+    # and up again
+    up ifup {{ interface_name }}1
+    up ifup {{ interface_name }}2
+    # bonding parameters
+    bond-mode 1
+    bond-miimon 100
+    bond-downdelay 400
+    bond-updelay 800
+    # dns options
+    dns-nameservers 10.190.75.11 10.190.75.24 10.190.75.12
+    dns-search int.amana.vpn amana.vpn
+
+# bond0 slave
+allow-hotplug {{ interface_name }}1
+iface {{ interface_name }}1 inet manual
+    up ifenslave bond0 $IFACE
+
+# bond0 slave
+allow-hotplug {{ interface_name }}2
+iface {{ interface_name }}2 inet manual
+    up ifenslave bond0 $IFACE
+
+
+# Bonding interface for virtual machines
+auto bond1
+iface bond1 inet manual
+    down ip link set $IFACE down
+    pre-up modprobe bonding mode=1
+    # create bonding device
+    pre-up test -d /sys/class/net/$IFACE || echo +$IFACE > /sys/class/net/bonding_masters
+    up ip link set $IFACE up mtu 1500
+    up udevadm trigger
+    # bring down slave interfaces
+    # just a paranoia check, this should not happen
+    up if test `cat /sys/class/net/{{ interface_name }}3/operstate` = up ; then ifdown {{ interface_name }}3 ; fi
+    up if test `cat /sys/class/net/{{ interface_name }}4/operstate` = up ; then ifdown {{ interface_name }}4 ; fi
+    # and up again
+    up ifup {{ interface_name }}3
+    up ifup {{ interface_name }}4
+    # bonding parameters
+    bond-mode 1
+    bond-miimon 100
+    bond-downdelay 400
+    bond-updelay 800
+
+# bond1 slave
+allow-hotplug {{ interface_name }}3
+iface {{ interface_name }}3 inet manual
+    up ifenslave bond1 $IFACE
+
+# bond1 slave
+allow-hotplug {{ interface_name }}4
+iface {{ interface_name }}4 inet manual
+    up ifenslave bond1 $IFACE
+
+
+# create bridge on bond1 for the virtual machines
+auto br2
+iface br2 inet manual
+    bridge_ports bond1
+    bridge_stp off
+    bridge_fd 0
+    bridge_maxwait 0

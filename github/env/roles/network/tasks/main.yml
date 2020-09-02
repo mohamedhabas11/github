@@ -1,0 +1,133 @@
+---
+
+
+- name: check network_san_ip
+  fail:
+    msg: "No DNS entry found for {{ network_san_name }}"
+  when: network_san_ip is defined and network_san_ip == 'NXDOMAIN'
+
+
+- name: check network_host_ip
+  fail:
+    msg: "No DNS entry found for {{ inventory_hostname }}"
+  when: network_host_ip is defined and network_host_ip == 'NXDOMAIN'
+
+
+#- name: set hostname
+#  hostname:
+#    name: "{{ move_hostname|default(inventory_hostname) }}"
+
+
+- name: install lldpd, ethtool
+  apt:
+    name:
+      - ethtool
+      - lldpd
+    state: present
+  tags:
+    - slavespeed
+
+
+- name: check for bonding interfaces
+  set_fact:
+    network_use_bond: True
+  with_dict: "{{ network_interfaces_map }}"
+  when: item.value.type is defined and item.value.type == 'bond'
+
+
+- name: check for bridging interfaces
+  set_fact:
+    network_use_bridge: True
+  with_dict: "{{ network_interfaces_map }}"
+  when: item.value.type is defined and item.value.type == 'bridge'
+
+
+- name: check for vlan interfaces
+  set_fact:
+    network_use_vlan: True
+  with_dict: "{{ network_interfaces_map }}"
+  when: item.value.type is defined and item.value.type == 'vlan'
+
+
+- debug: var=network_use_bond
+- debug: var=network_use_bridge
+- debug: var=network_use_vlan
+
+
+- name: check for routing tables
+  lineinfile:
+    dest: /etc/iproute2/rt_tables
+    line: "{{ item.value.routingtable }} {{ item.key | regex_replace( '([0-9]{1,}-{1})(.*)', '\\2' )  }}"
+  when: item.value.routingtable is defined
+  with_dict: "{{ network_interfaces_map }}"
+
+
+- name: remove /etc/network/interfaces.d/
+  file:
+    path: /etc/network/interfaces.d/
+    state: absent
+
+
+- name: create /etc/network/iface.d/
+  file:
+    path: /etc/network/iface.d/
+    state: directory
+
+
+- debug: var=network_interfaces_map
+
+
+- name: create interfaces file
+  become: yes
+  template:
+    src: network/interfaces.j2
+    dest: /etc/network/interfaces
+    owner: root
+    group: root
+    mode: 0644
+  notify:
+    - restart network
+  tags:
+    - interfaces
+
+
+- name: create interface-names file
+  become: yes
+  template:
+    src: network/interface-names.j2
+    dest: /etc/network/interface-names
+    owner: root
+    group: root
+    mode: 0644
+  tags:
+    - interfaces
+    - interface-names
+
+
+- name: set speed for bonding interfaces
+  shell: "{% for _slave in item.value.bond_slaves %}ethtool -s {{ _slave }} speed {{ item.value.bond_slaves_speed }}; {% endfor %}"
+  with_dict: "{{ network_interfaces_map }}"
+  when: item.value.bond_slaves_speed is defined
+  changed_when: false
+  tags:
+    - slavespeed
+
+- include_tasks: bonding.yml
+  when: network_use_bond
+
+
+- include_tasks: bridging.yml
+  when: network_use_bridge
+
+
+- include_tasks: vlans.yml
+  when: network_use_vlan
+
+
+- include_tasks: iptables.yml
+  when:
+    - network_iptables is defined and network_iptables != False
+
+
+- name: force all notified handlers to run at this point
+  meta: flush_handlers

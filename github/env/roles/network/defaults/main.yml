@@ -1,0 +1,34 @@
+
+
+network_interfaces_map: {}
+# skip those defs
+network_interfaces_map_ignore: []
+
+
+network_interface_default_gateway: 1
+network_interface_default_family: inet
+network_interface_default_method: manual
+network_interface_default_activate: auto
+network_interface_default_type: simple
+
+# defaults for bonding
+network_default_bond_mode: 1
+
+
+network_default_bond_miimon: 100
+network_default_bond_downdelay: 200
+network_default_bond_updelay: 200
+
+# defaults for bridging
+network_default_bridge_stp: "off"
+network_default_bridge_fd: 0
+network_default_bridge_maxwait: 0
+
+# variables to check wich modules have to be installed
+network_use_bridge: False
+network_use_bond: False
+network_use_vlan: False
+
+network_iptables: False
+
+network_debugging: True

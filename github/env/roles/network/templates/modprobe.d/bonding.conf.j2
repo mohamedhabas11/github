@@ -1,0 +1,14 @@
+# {{ ansible_managed }}
+
+{% for name, _interface_config in network_interfaces_map | dictsort %}
+{% set realname = name | regex_replace('([0-9]{1,}-{1})(.*)', '\\2') %}
+{% set type = _interface_config.type | default(network_interface_default_type) %}
+{% if type == 'bond' %}
+{% set bond_mode = _interface_config.bond_mode | default(network_default_bond_mode) %}
+{% set bond_miimon = _interface_config.bond_miimon | default(network_default_bond_miimon) %}
+{% set bond_downdelay = _interface_config.bond_downdelay | default(network_default_bond_downdelay) %}
+{% set bond_updelay = _interface_config.bond_updelay | default(network_default_bond_updelay) %}
+alias {{ realname }} bonding
+options {{ realname }} mode={{ bond_mode }} miimon={{ bond_miimon }} updelay={{ bond_updelay }} downdelay={{ bond_downdelay }}
+{% endif %}
+{% endfor %}

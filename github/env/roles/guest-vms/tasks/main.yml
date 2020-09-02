@@ -1,0 +1,45 @@
+---
+
+- name: fix dns ( because of ip range is 192.168.X.X )
+  lineinfile:
+    path: /etc/resolv.conf
+    line: nameserver 10.190.75.1
+
+
+- name: create folders for ansible
+  file:
+    path: "/home/ansible/{{ item }}"
+    state: directory
+    owner: ansible
+    group: ansible
+  with_items:
+    - bin
+    - templates
+
+
+- name: copy scripts
+  copy:
+    src: "bin/{{ item }}" 
+    dest: "/home/ansible/bin" 
+    mode: 0755
+  with_items:
+    - create_k8s_cluster.sh
+    - delete_k8s_cluster.sh
+    - prepare_base_templates.sh
+    - env.sh
+
+
+- name: copy files
+  copy:
+    src: "{{ item }}" 
+    dest: "/home/ansible/templates" 
+    mode: 0644
+  with_items:
+    - preseed.cfg
+    - interfaces
+    - resolv.conf
+    - "{{ inventory_dir }}/../storage/ansible-keys/k8s-office-shared-key.pub"
+  tags: 
+    - key
+
+

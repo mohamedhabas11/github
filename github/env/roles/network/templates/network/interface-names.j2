@@ -1,0 +1,8 @@
+#
+# {{ ansible_managed }}
+#
+# this file is picked up by zabbix to check all interfaces are configured
+#
+{% for name, _interface_config in network_interfaces_map | dictsort %}
+{{ name | regex_replace('([0-9]{1,}-{1})(.*)', '\\2') }}
+{% endfor %}

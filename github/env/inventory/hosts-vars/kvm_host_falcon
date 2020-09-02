@@ -1,0 +1,25 @@
+---
+
+libvirt_guests:
+
+  - name: office-quant-01.amana.vpn
+    vi_autostart: true
+    vi_extra_args: locale=de_CH.UTF-8 console-setup/ask_detect=false keyboard-configuration/layoutcode=ch file=file:/preseed.cfg netcfg/do_not_use_netplan=true vga=788 quiet
+    vi_location: http://ch.archive.ubuntu.com/ubuntu/dists/bionic/main/installer-amd64/
+    vi_preseed_template: preseed-bionic.cfg.j2
+    vi_grub_cmd_line: "ipv6.disable=1 net.ifnames=0 biosdevname=0"
+    vi_memory: 28672
+    vi_networks:
+      - bridge=br88,model=virtio
+    vi_num_cpu: 20
+    vi_os_type: linux
+    vi_os_variant: ubuntu18.04
+    vi_virt_type: kvm
+    libvirt_disks:
+    - disk_size: 200G
+      format: qcow2
+      bus: virtio
+      id: '0'
+      partition_scheme: atomic
+      device: vda
+      disk_pool: default

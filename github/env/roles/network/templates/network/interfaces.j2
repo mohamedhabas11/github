@@ -1,0 +1,281 @@
+{% macro static_ip_address(interface_config) -%}
+{%   if interface_config.method == 'static' %}
+    address {{ interface_config.address }}
+    netmask {{ interface_config.netmask }}
+{%    if interface_config.gateway != False %}
+    gateway {{ interface_config.gateway }}
+{%    else %}
+{%       if interface_config.iface_gw is defined and interface_config.iface_gw != False %}
+    up ip route add default via {{ interface_config.iface_gw }} dev {{ interface_config.name }} table {{ interface_config.name }}
+    up ip rule add from {{ interface_config.address }} table {{ interface_config.name }}
+    down ip route del default table {{ interface_config.name }}
+    down ip rule del table {{ interface_config.name }}
+{%       endif %}
+{%     endif %}
+{%   endif %}
+
+{% endmacro -%}
+
+
+{%- macro iface_header(interface_config) -%}
+{{ interface_config.activate }} {{ interface_config.name }}
+iface {{ interface_config.name }} {{ interface_config.family }} {{ interface_config.method }}
+{%  for line in interface_config.configlines %}
+    {{ line }}
+{%  endfor %}
+{%- endmacro -%}
+
+
+{%- macro iface_footer(interface_config) -%}
+{%  for route in interface_config.routes %}
+    up route add {{ route }}
+    post-down route del {{ route }}
+{%  endfor %}
+{%  for up in interface_config.up %}
+    up {{ up }}
+{%  endfor %}
+{%- endmacro -%}
+
+
+{%- macro bonding_config(interface_config) %}
+    pre-up modprobe {{ interface_config.name }}
+    # create bonding device
+    pre-up test -d /sys/class/net/{{ interface_config.name }} || echo +{{ interface_config.name }} > /sys/class/net/bonding_masters
+    # set config
+    pre-up ifconfig {{ interface_config.name }} down
+    ip addr flush dev {{ interface_config.name }}
+    pre-up echo {{ interface_config.bond_mode }} > /sys/class/net/{{ interface_config.name }}/bonding/mode
+    pre-up echo {{ interface_config.bond_miimon }} > /sys/class/net/{{ interface_config.name }}/bonding/miimon
+    pre-up echo {{ interface_config.bond_downdelay }} > /sys/class/net/{{ interface_config.name }}/bonding/downdelay
+    pre-up echo {{ interface_config.bond_updelay }} > /sys/class/net/{{ interface_config.name }}/bonding/updelay
+{%  if ((interface_config.bond_mode == 4) or (interface_config.bond_mode == '802.3ad')) and interface_config.bond_lacp_rate is defined %}
+    pre-up echo {{ interface_config.bond_lacp_rate }} > /sys/class/net/{{ interface_config.name }}/bonding/lacp_rate
+{%  endif %}
+{%  if interface_config.bond_hash_policy is defined %}
+    pre-up echo {{ interface_config.bond_hash_policy }} > /sys/class/net/{{ interface_config.name }}/bonding/xmit_hash_policy
+{%  endif %}
+
+    up ip link set {{ interface_config.name }} up mtu {{ interface_config.mtu | default(1500) }}
+    up udevadm trigger
+
+{%  if interface_config.bond_slaves_speed %}
+    # set slave speed
+{% for _slave in interface_config.bond_slaves %}
+    pre-up /sbin/ethtool -s {{ _slave }} speed {{ interface_config.bond_slaves_speed }}
+{% endfor %}
+{%-  endif %}
+
+    # add slaves
+{% for _slave in interface_config.bond_slaves %}
+    up echo "+{{ _slave }}" > /sys/class/net/{{ interface_config.name }}/bonding/slaves
+{% endfor %}
+
+    # check status: cat /proc/net/bonding/{{ interface_config.name }}
+{% endmacro -%}
+
+
+
+{%- macro vlan_config(interface_config) %}
+    vlan-raw-device {{ interface_config.vlan_raw_device }}
+{% endmacro -%}
+
+
+{%- macro bridge_config(interface_config) %}
+    bridge_ports {{ ' '.join(interface_config.bridge_ports) }}
+    bridge_stp {{ interface_config.bridge_stp }}
+    bridge_fd {{ interface_config.bridge_fd }}
+    bridge_maxwait {{ interface_config.bridge_maxwait }}
+{% endmacro -%}
+
+{%- macro iface_simple(interface_config) %}
+{{ iface_header(interface_config) }}
+{{ static_ip_address(interface_config) }}
+{% if (interface_config.mtu is defined) and (interface_config.mtu != 1500) %}
+    up ip link set {{ interface_config.name }} up mtu {{ interface_config.mtu }}
+{% endif %}
+{%- endmacro -%}
+
+
+{%- macro iface_bond(interface_config) %}
+{{ iface_header(interface_config) }}
+{{ static_ip_address(interface_config) }}{{ bonding_config(interface_config) }}
+{%- endmacro -%}
+
+
+{%- macro iface_vlan(interface_config) %}
+{{ iface_header(interface_config) }}
+{{ static_ip_address(interface_config) }}{{ vlan_config(interface_config) }}
+{%- endmacro -%}
+
+{%- macro iface_bridge(interface_config) %}
+{{ iface_header(interface_config) }}
+{{ static_ip_address(interface_config) }}{{ bridge_config(interface_config) }}
+{%- endmacro -%}
+
+#
+# {{ ansible_managed }}
+#
+
+auto lo
+iface lo inet loopback
+
+{% for name, _interface_config in network_interfaces_map | dictsort %}
+{% if _interface_config != False and name not in network_interfaces_map_ignore %}
+{#
+    set default values
+#}
+{%  set _interface = {} %}
+{%  set foo = _interface.__setitem__('name', name | regex_replace('([0-9]{1,}-{1})(.*)', '\\2')) %}
+{%  set foo = _interface.__setitem__('type', _interface_config.type | default(network_interface_default_type) ) %}
+{%  set foo = _interface.__setitem__('family', _interface_config.family | default(network_interface_default_family) ) %}
+{%  set foo = _interface.__setitem__('activate', _interface_config.activate | default(network_interface_default_activate) ) %}
+{%  set foo = _interface.__setitem__('method', _interface_config.method | default(network_interface_default_method) ) %}
+{%  set foo = _interface.__setitem__('mtu', _interface_config.mtu | default(1500) ) %}
+{%  set foo = _interface.__setitem__('configlines', _interface_config.configlines | default([]) ) %}
+{%  set foo = _interface.__setitem__('routes', _interface_config.routes | default([]) ) %}
+{%  set foo = _interface.__setitem__('up', _interface_config.up | default([]) ) %}
+{%  set foo = _interface.__setitem__('amana_dns', _interface_config.amana_dns | default(False) ) %}
+{#
+    set address information only if method is static
+      - address
+      - gateway
+      - netmask
+#}
+{%  if _interface.method == 'static' %}
+{%    set foo = _interface.__setitem__('address', _interface_config.address | default( lookup('dig', inventory_hostname) ) ) %}
+{#
+      create default netmask from range (class a,b or c)
+      Manually added to _a_classes, _b_classes or _c_classes
+#}
+{#    netmask guessing #}
+
+{%-   set _address_start = '.'.join(_interface['address'].split('.')[0:2])  %}
+{%    set _a_classes = []  %}
+{%    set _b_classes = ['10.72','172.30','172.31','10.200','10.201','10.202']  %}
+{%    set _c_classes = ['10.190',]  %}
+
+{%-   if _address_start in _a_classes: %}
+{%      set _default_netmask = '255.0.0.0' %}
+{%    elif _address_start in _b_classes: %}
+{%      set _default_netmask = '255.255.0.0' %}
+{%    elif _address_start in _c_classes: %}
+{%      set _default_netmask = '255.255.255.0' %}
+{%    else %}
+{%      set _default_netmask = '255.255.255.255' %}
+{%    endif %}{# /netmask guessing #}
+{%    set foo = _interface.__setitem__('netmask', _interface_config.netmask | default(_default_netmask) ) %}
+{%    set foo = _interface.__setitem__('address_cidr', _interface.address  + '/' + _interface.netmask ) %}
+{%    if _interface_config.gateway is defined and _interface_config.gateway %}
+{%      if _interface_config.gateway.lower() == 'auto' %}
+{%        set foo = _interface.__setitem__('gateway', _interface.address_cidr | ipaddr(network_interface_default_gateway) | ipaddr('address') ) %}
+{%      else %}
+{%        set foo = _interface.__setitem__('gateway', _interface_config.gateway ) %}
+{%      endif %}
+{%    else %}
+{%      set foo = _interface.__setitem__('gateway', False ) %}
+{%    endif %}
+{%    if network_debugging %}
+# ansible variables debugging: interface {{ name }}
+# -------------------------------------------------
+# _interface.netmask            {{ _interface.netmask }}
+# _interface.address            {{ _interface.address }}
+# _interface.address_cidr       {{ _interface.address_cidr }}
+# _interface.gateway            {{ _interface.gateway }}
+# _address_start (NM guess)     {{ _address_start }}
+# _default_netmask (NM guess)   {{ _default_netmask }}
+# _interface.amana_dns          {{ _interface.amana_dns }}
+{%    endif %}{# /debugging #}
+{%  endif %}{# /method static #}
+{# 
+	secondary routes table 
+#}
+{% set foo = _interface.__setitem__('iface_gw', _interface_config.iface_gw | default(False) ) %}
+{%    if network_debugging %}
+# _interface.type               {{ _interface.type }}
+# _interface.method             {{ _interface.method }}
+# _interface.family             {{ _interface.family }}
+# _interface.activate           {{ _interface.activate }}
+# _interface.mtu                {{ _interface.mtu }}
+# _interface.configlines        {{ _interface.configlines }}
+# _interface.routes             {{ _interface.routes }}
+# _interface.up                 {{ _interface.up }}
+# _interface.iface_gw           {{ _interface.iface_gw }}
+{%    endif %}
+{#
+    prepare bonding params
+#}
+{%  if _interface.type == 'bond' %}
+{%    set foo = _interface.__setitem__('bond_mode', _interface_config.bond_mode | default(network_default_bond_mode) ) %}
+{%    set foo = _interface.__setitem__('bond_miimon', _interface_config.bond_miimon | default(network_default_bond_miimon) ) %}
+{%    set foo = _interface.__setitem__('bond_downdelay', _interface_config.bond_downdelay | default(network_default_bond_downdelay) ) %}
+{%    set foo = _interface.__setitem__('bond_updelay', _interface_config.bond_updelay | default(network_default_bond_updelay) ) %}
+{%    set foo = _interface.__setitem__('bond_slaves', _interface_config.bond_slaves ) %}
+{%    set foo = _interface.__setitem__('bond_slaves_speed', _interface_config.bond_slaves_speed | default(False) ) %}
+{%    if network_debugging %}
+# ** bonding params **
+# _interface.bond_mode          {{ _interface.bond_mode }}
+# _interface.bond_miimon        {{ _interface.bond_miimon }}
+# _interface.bond_downdelay     {{ _interface.bond_downdelay }}
+# _interface.bond_updelay       {{ _interface.bond_updelay }}
+# _interface.bond_slaves        {{ _interface.bond_slaves }}
+# _interface.bond_slaves_speed  {{ _interface.bond_slaves_speed }}
+{%    endif %}
+{%    if ((_interface_config.bond_mode == 4) or (_interface_config.bond_mode == '802.3ad')) and _interface_config.bond_lacp_rate is defined %}
+{%      set foo = _interface.__setitem__('bond_lacp_rate', _interface_config.bond_lacp_rate) %}
+{%      if network_debugging %}
+# _interface.bond_lacp_rate     {{ _interface.bond_lacp_rate }}
+{%      endif %}
+{%    endif %}
+{%    if _interface_config.bond_hash_policy is defined %}
+{%      set foo = _interface.__setitem__('bond_hash_policy', _interface_config.bond_hash_policy) %}
+{%      if network_debugging %}
+# _interface.bond_hash_policy   {{ _interface.bond_hash_policy }}
+{%      endif %}
+{%    endif %}
+{%  endif %}
+{#
+    prepare vlan params
+#}
+{%  if _interface.type == 'vlan' %}
+#     vlan params
+{%    set foo = _interface.__setitem__('vlan_raw_device', _interface_config.vlan_raw_device) %}
+{%    if network_debugging %}
+# _interface.vlan_raw_device    {{ _interface.vlan_raw_device }}
+{%    endif %}
+{%  endif %}
+{#
+    prepare bridge params
+
+#}
+{%  if _interface.type == 'bridge' %}
+{%    set foo = _interface.__setitem__('bridge_ports', _interface_config.bridge_ports) %}
+{%    set foo = _interface.__setitem__('bridge_stp', _interface_config.bridge_stp | default(network_default_bridge_stp ) ) %}
+{%    set foo = _interface.__setitem__('bridge_fd', _interface_config.bridge_fd | default(network_default_bridge_fd ) ) %}
+{%    set foo = _interface.__setitem__('bridge_maxwait', _interface_config.bridge_maxwait | default(network_default_bridge_maxwait ) ) %}
+{%    if network_debugging %}
+# ** bridge params **
+# _interface.bridge_ports       {{ _interface.bridge_ports }}
+# _interface.bridge_maxwait     {{ _interface.bridge_maxwait }}
+# _interface.bridge_fd          {{ _interface.bridge_fd }}
+# _interface.bridge_stp         {{ _interface.bridge_stp }}
+{%    endif %}
+{%  endif %}
+{#
+    call macros
+#}
+{%  if _interface.type == 'simple'  %}
+{{ iface_simple(_interface) }}
+{%  elif _interface.type == 'bond' %}
+{{ iface_bond(_interface) }}
+{%  elif _interface.type == 'vlan' %}
+{{ iface_vlan(_interface) }}
+{%  elif _interface.type == 'bridge' %}
+{{ iface_bridge(_interface) }}
+{%  endif %}
+{{ iface_footer(_interface) }}
+{% endif %}
+{% endfor %}
+
+
+# include snippets from other roles
+source /etc/network/iface.d/*.conf

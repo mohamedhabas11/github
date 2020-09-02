@@ -1,0 +1,7 @@
+---
+
+- name: restart network
+  service:
+    name: networking
+    state: restarted
+  when: False or ( network_restart is defined and network_restart )

@@ -1,0 +1,19 @@
+libvirt_directory_pools:
+- name: local-pool
+  path: /srv/libvirt/pool
+lvm2_thin_pools:
+- name: lv_thin_pool
+  opts: --poolmetadatasize 4G
+  size: 4T
+  volumegroup: vg_thin
+lvm2_volumes:
+- fstype: ext4
+  mountpoint: /srv/libvirt/pool
+  name: libvirtpool
+  poolname: lv_thin_pool
+  size: 3T
+  volumegroup: vg_thin
+lvm2_volume_groups:
+- devices:
+  - /dev/sda6
+  name: vg_thin

@@ -1,0 +1,30 @@
+---
+
+- name: install ifenslave
+  apt:
+    name: ifenslave
+    state: present
+
+
+- name: modprobe bonding
+  command: "modprobe bonding"
+  changed_when: False
+
+
+- name: add bonding to /etc/modules
+  lineinfile:
+    dest: /etc/modules
+    regexp: '^bonding'
+    line: 'bonding'
+
+
+- name: create /etc/modprobe.d/bonding.conf
+  become: yes
+  template:
+    src: modprobe.d/bonding.conf.j2
+    dest: /etc/modprobe.d/bonding.conf
+    owner: root
+    group: root
+    mode: 0644
+
+

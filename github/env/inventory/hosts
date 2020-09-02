@@ -1,14 +1,42 @@
-[K8s-infra]
-etcd-01.kube.systems
-etcd-02.kube.systems
-etcd-03.kube.systems
-haproxy-01.kube.systems
-haproxy-02.kube.systems
-mastera-01.kube.systems
-master-02.kube.systems
-worker-01.kube.systems
-worker-02.kube.systems
 
+[kvm_host_falcon]
+$KVM_host_name		ansible_ssh_private_key_file=storage/ansible-keys/
+[K8s-infra]
+etcd-01.kube.systems          ansible_ssh_private_key_file=storage/ansible-keys/
+etcd-02.kube.systems          ansible_ssh_private_key_file=storage/ansible-keys/
+etcd-03.kube.systems          ansible_ssh_private_key_file=storage/ansible-keys/
+haproxy-01.kube.systems       ansible_ssh_private_key_file=storage/ansible-keys/
+haproxy-02.kube.systems       ansible_ssh_private_key_file=storage/ansible-keys/
+master-01.kube.systems        ansible_ssh_private_key_file=storage/ansible-keys/
+master-02.kube.systems        ansible_ssh_private_key_file=storage/ansible-keys/
+worker-01.kube.systems        ansible_ssh_private_key_file=storage/ansible-keys/
+worker-02.kube.systems        ansible_ssh_private_key_file=storage/ansible-keys/
+
+# TEST
+
+[k8s_test_group]
+[k8s_test_group:children]
+k8s_test_haproxy_group
+k8s_test_etcd_group
+k8s_test_master_group
+k8s_test_worker_group
+
+[k8s_test_haproxy_group]
+haproxy01@${{ "TEST_DOMAIN }}
+haproxy02@${{ "TEST_DOMAIN }}
+
+[k8s_test_etcd_group]
+etcd.01@${{ "TEST_DOMAIN }}
+etcd.02@${{ "TEST_DOMAIN }}
+etcd.03@${{ "TEST_DOMAIN }}
+
+[k8s_test_master_group]
+master.01@${{ "TEST_DOMAIN }}
+master.02@${{ "TEST_DOMAIN }}
+
+[k8s_test_worker_group]
+worker.01@${{ "TEST_DOMAIN }}
+worker.02@${{ "TEST_DOMAIN }}
 
 
 

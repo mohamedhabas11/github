@@ -1,0 +1,18 @@
+---
+
+- name: install vlan
+  apt:
+    name: vlan
+    state: present
+
+
+- name: modprobe 8021q
+  command: "modprobe 8021q"
+  changed_when: False
+
+
+- name: add 8021q to /etc/modules
+  lineinfile:
+    dest: /etc/modules
+    regexp: '^8021q'
+    line: '8021q'

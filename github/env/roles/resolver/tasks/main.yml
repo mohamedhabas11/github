@@ -1,0 +1,82 @@
+---
+
+# set nameservers
+- name: set nameserver for resolv.conf
+  set_fact:
+    _resolv_conf_dns: "{{ resolver_nameservers_per_gw[resolver_default_gw] }}"
+
+
+# create /etc/resolv.conf
+    
+- name: stat /etc/resolv.conf
+  stat:
+    path: /etc/resolv.conf
+  register: _check_sym
+
+
+- name: ensure /etc/resolv.conf is not a link
+  file:
+    path: /etc/resolv.conf
+    state: absent
+  when: _check_sym.stat.islnk is defined and _check_sym.stat.islnk
+  
+
+- name: create /etc/resolv.conf
+  template:
+    src: resolv.conf.j2
+    dest: /etc/resolv.conf
+
+
+- name: remove dns related lines from interfaces files
+  lineinfile:
+    regexp: '^\s*{{ item }}\s*.*'
+    dest: /etc/network/interfaces
+    state: absent 
+  with_items:
+  - dns-search
+  - dns-nameservers
+  
+
+# cleanup stuff
+    
+- name: remove dnsmasq resolvconf netplan.io
+  apt:
+    name:
+      - dnsmasq
+      - resolvconf
+      - netplan.io
+    state: absent
+
+
+
+- name: install ifupdown
+  apt:
+    name: ifupdown
+    state: present
+
+  
+- name: remove files
+  file:
+    path: "{{ item }}"
+    state: absent
+  with_items:
+  - /etc/dnsmasq.conf
+  - /etc/dnsmasq.d
+  - /etc/resolvconf/
+  - /etc/netplan
+
+
+- name: disable systemd-resolved
+  service: 
+    name: systemd-resolved
+    state: stopped
+    enabled: false
+  ignore_errors: true
+
+
+
+
+
+
+
+

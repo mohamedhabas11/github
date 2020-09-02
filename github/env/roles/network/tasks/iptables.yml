@@ -1,0 +1,17 @@
+---
+
+
+- name: create /etc/init.d/iptables
+  template:
+    src: init.d/iptables
+    dest: /etc/init.d/iptables
+    owner: root
+    group: root
+    mode: 0755
+  register: _iptables_init_script
+
+
+- name: start/enable iptables service
+  command: update-rc.d iptables defaults
+  when: _iptables_init_script.changed
+

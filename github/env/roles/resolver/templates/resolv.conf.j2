@@ -1,0 +1,15 @@
+#
+# {{ ansible_managed }}
+#
+
+{% for nameserver in _resolv_conf_dns %}
+nameserver {{ nameserver }}
+{% endfor %}
+
+{% for option in resolver_options %}
+options {{ option }}
+{% endfor %}
+
+{% if resolver_dns_search is defined %}
+search {% for name in resolver_dns_search %}{{ name }} {% endfor %}
+{% endif %}

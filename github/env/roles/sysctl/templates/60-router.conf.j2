@@ -1,0 +1,30 @@
+# router/storage
+# defaults:
+# net.core.optmem_max = 20480
+# net.core.rmem_default = 212992
+# net.core.rmem_max = 212992
+# net.core.somaxconn = 128
+# net.core.wmem_default = 212992
+# net.core.wmem_max = 212992
+
+# net.ipv4.tcp_max_syn_backlog = 1024
+# net.ipv4.tcp_max_tw_buckets = 131072
+# net.ipv4.tcp_rmem = 4096    87380   6291456
+# net.ipv4.tcp_wmem = 4096    16384   4194304
+# net.netfilter.nf_conntrack_max = 262144
+
+net.core.optmem_max={{ MiB_128 }}
+net.core.rmem_default={{ MiB_64 }}
+net.core.rmem_max={{ MiB_256 }}
+net.core.somaxconn={{ KiB_32 }}
+net.core.wmem_default={{ MiB_64 }}
+net.core.wmem_max={{ MiB_256 }}
+
+net.ipv4.tcp_max_syn_backlog={{ KiB_16 }}
+net.ipv4.tcp_max_tw_buckets={{ KiB_512 }}
+net.ipv4.tcp_rmem={{ MiB_64 }} {{ MiB_128 }} {{ MiB_256 }}
+net.ipv4.tcp_wmem={{ MiB_64 }} {{ MiB_128 }} {{ MiB_256 }}
+net.netfilter.nf_conntrack_max={{ MiB_2 }}
+
+# restart routers after kernel panic
+kernel.panic=3

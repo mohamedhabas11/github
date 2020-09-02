@@ -1,0 +1,19 @@
+---
+
+
+- name: create /etc/sysctl.d/.conf files
+  template:
+    src: "{{ item }}.j2"
+    dest: "/etc/sysctl.d/{{ item }}"
+    owner: root
+    group: root
+    mode: 0644
+  register: _sysctl_change
+  with_items: "{{ sysctl_includes }}"
+
+
+- name: apply sysctl
+  command: "sysctl --load --ignore --system"
+  when: _sysctl_change.changed
+
+

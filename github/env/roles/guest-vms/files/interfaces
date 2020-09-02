@@ -1,0 +1,7 @@
+
+auto eth0
+iface eth0 inet static
+
+    address ${IP}
+    netmask 255.255.252.0
+    gateway 192.168.88.1

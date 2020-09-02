@@ -1,0 +1,29 @@
+---
+
+
+sysctl_purpose: server
+sysctl_default_map:
+  server:
+    disable_ipv6:         yes
+    disable_rp_filter:    no
+    enable_forwarding:    no
+    enable_nonlocal_bind: no
+  router:
+    disable_ipv6:         yes
+    disable_rp_filter:    yes
+    enable_forwarding:    yes
+    enable_nonlocal_bind: yes
+  storage:
+    disable_ipv6:         yes
+    disable_rp_filter:    no
+    enable_forwarding:    no
+    enable_nonlocal_bind: no
+
+disable_ipv6:             "{{ sysctl_default_map[sysctl_purpose]['disable_ipv6'] | bool }}"
+disable_rp_filter:        "{{ sysctl_default_map[sysctl_purpose]['disable_rp_filter'] | bool }}"
+enable_forwarding:        "{{ sysctl_default_map[sysctl_purpose]['enable_forwarding'] | bool }}"
+enable_nonlocal_bind:     "{{ sysctl_default_map[sysctl_purpose]['enable_nonlocal_bind'] | bool }}"
+
+sysctl_includes:
+ - 10-network-security.conf
+ - "60-{{ sysctl_purpose }}.conf"

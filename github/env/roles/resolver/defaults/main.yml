@@ -1,0 +1,20 @@
+---
+
+resolver_default_gw: "{{ ansible_default_ipv4.gateway }}"
+
+resolver_dns_search: "{{ default_search_domains }}"
+
+resolver_options:
+  - "timeout:3"
+  - "attempts:1"
+
+resolver_nameservers_per_gw:
+  $SOME_SERVER: "{{ default_dns }}"   # internal
+  **.**.***.*:
+    - "{{ ip_adress }}"
+    - "{{ ip_adress }}"
+    - "{{ ip_adress }}"
+    - "{{ ip_adress }}"
+  default_ip_adress:
+    - 8.8.8.8
+    - 8.8.4.4
